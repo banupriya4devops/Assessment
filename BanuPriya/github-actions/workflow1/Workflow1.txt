@@ -1,0 +1,36 @@
+name: Build Webserver Container
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v2
+
+    - name: Build Container
+      run: |
+        docker build -t my-webserver .
+    
+    - name: Run Container
+      run: |
+        docker run -p 8080:80 my-webserver
+
+
+
+====================
+
+In this workflow, I am doing below.
+
+Defining the name of the workflow as "Build Webserver Container"
+Setting the workflow to trigger on push actions to the main branch
+Defining a single job named "build" that will run on an Ubuntu virtual environment
+Checking out the repository using the actions/checkout action
+Building a Docker container named "my-webserver" using the Dockerfile included in the repo
+Running the container with port 8080 mapped to port 80 of the container
+Note that the Dockerfile included in the repo should have the necessary configuration to display a Top 10 list of movies or other content on the webse

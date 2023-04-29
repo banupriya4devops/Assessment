@@ -1,0 +1,35 @@
+name: Sysbench Load Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  loadtest:
+    runs-on: [ubuntu-latest, macos-latest]
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Setup Sysbench
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install sysbench
+      - name: Run Sysbench Test
+        run: |
+          sysbench cpu --threads=2 --time=60 run
+
+
+=====================================
+
+Explanation:
+
+The name field specifies the name of the workflow.
+The on field specifies that the workflow is triggered manually via the GitHub Actions page on the repo.
+The jobs field specifies the jobs that should be run in this workflow.
+The loadtest job is configured to run on two different runners, one Ubuntu and one MacOS, using the runs-on field and the matrix strategy.
+The steps field specifies the steps to be executed in this job.
+The first step checks out the repository using the actions/checkout action.
+The second step installs sysbench on the runner.
+The final step runs a sysbench CPU test with two threads for 60 seconds using the sysbench cpu command.
