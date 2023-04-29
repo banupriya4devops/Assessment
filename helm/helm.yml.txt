@@ -1,0 +1,88 @@
+# Chart.yaml
+apiVersion: v2
+name: helm-example
+description: A Helm chart for deploying a simple service
+version: 0.1.0
+
+# values.yaml
+replicaCount: 3
+hostname: helm-example.fndev.net
+tlsSecret: wildcard-fndev-net
+
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helm-example.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "helm-example.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "helm-example.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: datawire/quote:0.5.0
+          ports:
+            - containerPort: 8080
+
+# service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "helm-example.fullname" . }}
+spec:
+  selector:
+    app: {{ include "helm-example.name" . }}
+    release: {{ .Release.Name }}
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
+
+# ingress.yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: {{ include "helm-example.fullname" . }}
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  tls:
+    - hosts:
+        - {{ .Values.hostname }}
+      secretName: {{ .Values.tlsSecret }}
+  rules:
+    - host: {{ .Values.hostname }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ include "helm-example.fullname" . }}
+              servicePort: 80
+
+# NOTES.txt
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "helm-example.fullname" . }}-notes
+data:
+  message: |
+    Congratulations, your {{ include "helm-example.name" . }} service is now running on Kubernetes! To access it, use the following URL:
+
+    http://{{ .Values.hostname }}/
+
+
+
+===========================================
+
+To deploy the chart with default values, run: helm install my-release /path/to/helm-example
+
+To override the default values, create a values.yaml file with your custom values and run:
+helm install my-release -f values.yaml /path/to/helm-example

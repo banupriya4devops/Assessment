@@ -1,0 +1,81 @@
+# Create an S3 bucket
+resource "aws_s3_bucket" "customer_suggestion" {
+  bucket = var.bucket_name
+}
+
+# Create an RDS MySQL instance
+resource "aws_db_instance" "customer_suggestion" {
+  engine            = "mysql"
+  instance_class    = var.instance_type
+  allocated_storage = var.storage_size
+  identifier        = var.db_instance_name
+  name              = var.db_name
+  username          = var.db_username
+  password          = var.db_password
+}
+
+# Create an IAM role for the microservice
+resource "aws_iam_role" "customer_suggestion" {
+  name = var.role_name
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Create an IAM policy granting full permissions to the S3 bucket and RDS instance
+resource "aws_iam_policy" "customer_suggestion" {
+  name        = var.policy_name
+  policy      = data.aws_iam_policy_document.customer_suggestion.json
+}
+
+data "aws_iam_policy_document" "customer_suggestion" {
+  statement {
+    actions = [
+      "s3:*",
+      "rds:*"
+    ]
+
+    resources = [
+      aws_s3_bucket.customer_suggestion.arn,
+      aws_db_instance.customer_suggestion.arn
+    ]
+  }
+}
+
+# Attach the policy to the role
+resource "aws_iam_role_policy_attachment" "customer_suggestion" {
+  policy_arn = aws_iam_policy.customer_suggestion.arn
+  role       = aws_iam_role.customer_suggestion.name
+}
+
+# Store SSM parameters for the S3 bucket, RDS instance, and IAM role
+data "template_file" "ssm_parameters" {
+  template = file("${path.module}/templates/ssm-parameters.tpl")
+
+  vars = {
+    service_name        = var.service_name
+    bucket_name         = aws_s3_bucket.customer_suggestion.id
+    db_endpoint         = aws_db_instance.customer_suggestion.endpoint
+    db_root_username    = aws_db_instance.customer_suggestion.username
+    db_root_password    = aws_db_instance.customer_suggestion.password
+    iam_role_name       = aws_iam_role.customer_suggestion.name
+  }
+}
+
+resource "aws_ssm_parameter" "ssm_parameters" {
+  name  = "/services/${var.service_name}/${var.environment}/${var.region}/${var.application_name}/"
+  count = length(data.template_file.ssm_parameters.rendered)
+
+  type  = "String"
+  value = data.template_file.ssm_parameters.rendered[count.index]
+}

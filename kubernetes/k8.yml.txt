@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: top10
+spec:
+  selector:
+    matchLabels:
+      app: top10
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: top10
+    spec:
+      containers:
+      - name: top10
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html-volume
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: html-volume
+        configMap:
+          name: top10-configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: top10-songs
+spec:
+  selector:
+    app: top10
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: top10-movies
+spec:
+  selector:
+    app: top10
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: top10-games
+spec:
+  selector:
+    app: top10
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: top10-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /top10songs
+        pathType: Prefix
+        backend:
+          service:
+            name: top10-songs
+            port:
+              name: http
+      - path: /top10movies
+        pathType: Prefix
+        backend:
+          service:
+            name: top10-movies
+            port:
+              name: http
+      - path: /top10games
+        pathType: Prefix
+        backend:
+          service:
+            name: top10-games
+            port:
+              name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-ingress
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: controller
